@@ -2,6 +2,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Xml;
+using System.IO;
 
 namespace TheCrew2Fix;
 class Program
@@ -28,6 +29,7 @@ class Program
         Console.WriteLine("Set value to Borderless.");
         doc.Save(path);
         Console.WriteLine("Config saved.");
+        FixD3DGear();
         Console.WriteLine("Launching Game...");
         Process.Start(new ProcessStartInfo("uplay://launch/2855/0") { UseShellExecute = true });
         Console.WriteLine("Game started. Exit in 3 seconds.");
@@ -70,5 +72,47 @@ class Program
             AnyKeyExit(-1);
             return null;
         }
+    }
+
+    static void FixD3DGear()
+    {
+        var dumppath = System.IO.Path.GetTempPath() + "\\d3dgearminidump.zip";
+        if (File.Exists(dumppath))
+        {
+            Console.WriteLine("Found D3DGear minidump file. Suppose to be a D3DGear issue.");
+            Console.WriteLine("Trying to prevent D3DGear from loading...");
+            Console.WriteLine("Searching for game folder...");
+            var filelist=SearchFiles("TheCrew2_BE.exe");
+            if (filelist.Length > 0)
+            {
+                foreach (var file in filelist)
+                {
+                    var path = new FileInfo(file).Directory?.FullName;
+                    if (File.Exists(path + "\\d3dGear64.dll"))
+                    {
+                        Console.WriteLine("Found D3DGear file: "+ path + "\\d3dGear64.dll");
+                        File.Move(path + "\\d3dGear64.dll", path + "\\d3dGear64.bak");
+                        Console.WriteLine("D3DGear disabled.");
+                    }
+                }
+            }
+        }
+        File.Delete(dumppath);
+    }
+
+    static string[] SearchFiles(string name)
+    {
+        var files = new List<string>();
+        //@Stan R. suggested an improvement to handle floppy drives...
+        //foreach (DriveInfo d in DriveInfo.GetDrives())
+        foreach (DriveInfo d in DriveInfo.GetDrives().Where(x => x.IsReady == true))
+        {
+            files.AddRange(Directory.EnumerateFiles(d.RootDirectory.FullName, name, new EnumerationOptions
+            {
+                IgnoreInaccessible = true,
+                RecurseSubdirectories = true
+            }));
+        }
+        return files.ToArray();
     }
 }
